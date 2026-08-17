@@ -10,12 +10,16 @@ const arabic = IBM_Plex_Sans_Arabic({
 
 export const metadata: Metadata = {
   title: "Like A Model | الرئيسية",
-  description: "رحلة تحول مصممة خصيصاً لك. في Like A Model نؤمن أن التحول الحقيقي يبدأ من القرار."
+  description: "رحلة تحول مصممة خصيصاً لك. في Like A Model نؤمن أن التحول الحقيقي يبدأ من القرار.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png"
+  }
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ar" dir="rtl" className={`${arabic.variable} h-full antialiased`}>
+    <html lang="ar" dir="rtl" data-scroll-behavior="smooth" className={`${arabic.variable} h-full antialiased`}>
       <body className="min-h-full">{children}</body>
     </html>
   );
