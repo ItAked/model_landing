@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale } from "@/lib/locale";
 import { journeys } from "@/lib/content";
-import { gsap, useGsap } from "@/lib/useGsap";
+import { gsap, prefersReducedMotion, useGsap } from "@/lib/useGsap";
 
 export function HomeHero() {
   const { t } = useLocale();
@@ -111,43 +111,60 @@ export function Manifesto() {
 }
 
 export function HomeSteps() {
-  const { t } = useLocale();
+  const { t, dir } = useLocale();
   const root = useRef<HTMLElement>(null);
+  const index = useRef(0);
+  const busy = useRef(false);
+  const [active, setActive] = useState(0);
 
-  useGsap(
-    root,
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add("(min-width: 992px)", () => {
-        const nums = t.steps.map((s) => s.num);
-        const numEl = root.current?.querySelector(".steps-num");
-        const panels = gsap.utils.toArray<HTMLElement>(".step-panel");
-        gsap.set(panels, { autoAlpha: 0, y: 28 });
-        gsap.set(panels[0], { autoAlpha: 1, y: 0 });
-        if (numEl) numEl.textContent = nums[0];
+  const goTo = (next: number, direction: number) => {
+    const steps = t.steps;
+    const i = (next + steps.length) % steps.length;
+    if (busy.current || i === index.current) return;
+    const from = index.current;
+    const panels = root.current?.querySelectorAll<HTMLElement>(".step-panel");
+    const numEl = root.current?.querySelector<HTMLElement>(".steps-num");
+    if (!panels) return;
+    busy.current = true;
+    index.current = i;
+    setActive(i);
+    const dirY = direction;
+    const reduced = prefersReducedMotion();
 
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: root.current,
-            start: "top top",
-            end: "+=260%",
-            pin: true,
-            scrub: 0.85,
-            onUpdate: (self) => {
-              const i = Math.min(nums.length - 1, Math.floor(self.progress * nums.length));
-              if (numEl) numEl.textContent = nums[i];
-            }
-          }
-        });
-
-        panels.forEach((panel, i) => {
-          if (i === 0) return;
-          tl.to(panels[i - 1], { autoAlpha: 0, y: -24, duration: 0.45 }, i).fromTo(panel, { autoAlpha: 0, y: 32 }, { autoAlpha: 1, y: 0, duration: 0.45 }, i);
-        });
+    if (reduced) {
+      panels.forEach((p, n) => {
+        p.classList.toggle("is-on", n === i);
+        gsap.set(p, { autoAlpha: n === i ? 1 : 0, y: 0 });
       });
-    },
-    [t.stepsTitle]
-  );
+      if (numEl) numEl.textContent = steps[i].num;
+      busy.current = false;
+      return;
+    }
+
+    const tl = gsap.timeline({
+      onComplete: () => {
+        busy.current = false;
+      }
+    });
+    tl.to(panels[from], { autoAlpha: 0, y: -28 * dirY, duration: 0.4, ease: "power3.in" }, 0).fromTo(
+      panels[i],
+      { autoAlpha: 0, y: 36 * dirY },
+      { autoAlpha: 1, y: 0, duration: 0.5, ease: "power3.out" },
+      0.12
+    );
+    if (numEl) {
+      tl.to(numEl, { yPercent: -40 * dirY, opacity: 0, duration: 0.28, ease: "power2.in" }, 0)
+        .add(() => {
+          numEl.textContent = steps[i].num;
+        }).fromTo(numEl, { yPercent: 40 * dirY, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.4, ease: "power3.out" });
+    }
+    panels.forEach((p, n) => p.classList.toggle("is-on", n === i));
+  };
+
+  useGsap(root, () => {
+    gsap.set(".step-panel", { autoAlpha: 0, y: 24 });
+    gsap.set(".step-panel.is-on", { autoAlpha: 1, y: 0 });
+  }, [t.stepsTitle]);
 
   return (
     <section className="steps" ref={root}>
@@ -155,15 +172,22 @@ export function HomeSteps() {
         <p className="eyebrow">{t.stepsLead}</p>
         <h2 className="section-title">{t.stepsTitle}</h2>
         <div className="steps-pin">
-          <div className="steps-num" aria-hidden>01</div>
-          <div className="steps-stage">
-            {t.steps.map((step, i) => (
-              <article className={`step-panel${i === 0 ? " is-on" : ""}`} key={step.num}>
-                <p className="eyebrow">{step.num}</p>
-                <h3>{step.title}</h3>
-                <p className="lead">{step.body}</p>
-              </article>
-            ))}
+          <div className="steps-num" aria-hidden>
+            {t.steps[0].num}
+          </div>
+          <div>
+            <div className="steps-stage">
+              {t.steps.map((step, i) => (
+                <article className={`step-panel${i === 0 ? " is-on" : ""}`} key={step.num}>
+                  <p className="eyebrow">{step.num}</p>
+                  <h3>{step.title}</h3>
+                  <p className="lead">{step.body}</p>
+                </article>
+              ))}
+            </div>
+            <SliderControls dir={dir} count={t.steps.length} active={active} onPrev={() => goTo(index.current - 1, -1)} onNext={() => goTo(index.current + 1, 1)} 
+              onDot={(i) => goTo(i, i > index.current ? 1 : -1)}
+            />
           </div>
         </div>
       </div>
@@ -172,68 +196,115 @@ export function HomeSteps() {
 }
 
 export function JourneyRail() {
-  const { t, locale } = useLocale();
+  const { t, locale, dir } = useLocale();
   const root = useRef<HTMLElement>(null);
+  const index = useRef(0);
+  const [active, setActive] = useState(0);
+  const [maxIndex, setMaxIndex] = useState(0);
 
-  useGsap(
-    root,
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add("(min-width: 768px)", () => {
-        const track = root.current?.querySelector(".rail-track") as HTMLElement | null;
-        if (!track) return;
-        const getAmount = () => Math.max(0, track.scrollWidth - window.innerWidth + 80);
-        gsap.to(track, {
-          x: () => (locale === "ar" ? getAmount() : -getAmount()),
-          ease: "none",
-          scrollTrigger: {
-            trigger: root.current,
-            start: "top top",
-            end: () => `+=${getAmount()}`,
-            pin: true,
-            scrub: 1,
-            anticipatePin: 1,
-            invalidateOnRefresh: true
-          }
-        });
-      });
-      gsap.fromTo(
-        ".rail-card",
-        { clipPath: "inset(14% 10% 14% 10% round 28px)" },
-        {
-          clipPath: "inset(0% 0% 0% 0% round 28px)",
-          stagger: 0.08,
-          duration: 1.05,
-          ease: "power3.out",
-          scrollTrigger: { trigger: root.current, start: "top 72%" }
-        }
-      );
-    },
-    [locale, t.journeysTitle]
-  );
+  const slideTo = (next: number) => {
+    const viewport = root.current?.querySelector<HTMLElement>(".rail-viewport");
+    const track = root.current?.querySelector<HTMLElement>(".rail-track");
+    const card = track?.querySelector<HTMLElement>(".rail-card");
+    if (!viewport || !track || !card) return;
+    const gap = Number.parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap) || 20;
+    const step = card.offsetWidth + gap;
+    const maxIndexValue = Math.max(0, Math.floor((track.scrollWidth - viewport.clientWidth - 1) / step));
+    setMaxIndex(maxIndexValue);
+    const i = Math.min(maxIndexValue, Math.max(0, next));
+    index.current = i;
+    setActive(i);
+    const offset = i * step;
+    const x = locale === "ar" ? offset : -offset;
+    if (prefersReducedMotion()) {
+      gsap.set(track, { x });
+      return;
+    }
+    gsap.to(track, { x, duration: 0.75, ease: "power3.inOut" });
+  };
+
+  useGsap(root, () => {
+    gsap.fromTo(
+      ".rail-card",
+      { clipPath: "inset(14% 10% 14% 10% round 28px)" },
+      {
+        clipPath: "inset(0% 0% 0% 0% round 28px)",
+        stagger: 0.08,
+        duration: 1.05,
+        ease: "power3.out",
+        scrollTrigger: { trigger: root.current, start: "top 72%" }
+      }
+    );
+  }, [locale, t.journeysTitle]);
+
+  useEffect(() => {
+    slideTo(index.current);
+    const onResize = () => slideTo(index.current);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [locale]);
 
   return (
     <section className="rail" ref={root} id="journeys">
       <div className="wrap rail-head">
-        <p className="eyebrow">01</p>
-        <h2 className="section-title">{t.journeysTitle}</h2>
-        <p className="lead">{t.journeysLead}</p>
+        <div>
+          <p className="eyebrow">01</p>
+          <h2 className="section-title">{t.journeysTitle}</h2>
+          <p className="lead">{t.journeysLead}</p>
+        </div>
+        <SliderControls dir={dir} count={journeys.length} active={active} onPrev={() => slideTo(index.current - 1)} onNext={() => slideTo(index.current + 1)} disablePrev={active <= 0}
+          disableNext={active >= maxIndex} />
       </div>
-      <div className="rail-track">
-        {journeys.map((j) => (
-          <figure className="rail-card" key={j.id}>
-            <img src={j.image} alt="" />
-            <figcaption>
-              <h3>{locale === "ar" ? j.titleAr : j.titleEn}</h3>
-              <ul>
-                {(locale === "ar" ? j.pointsAr : j.pointsEn).slice(0, 4).map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ul>
-            </figcaption>
-          </figure>
-        ))}
+      <div className="rail-viewport">
+        <div className="rail-track">
+          {journeys.map((j) => (
+            <figure className="rail-card" key={j.id}>
+              <img src={j.image} alt="" />
+              <figcaption>
+                <h3>{locale === "ar" ? j.titleAr : j.titleEn}</h3>
+                <ul>
+                  {(locale === "ar" ? j.pointsAr : j.pointsEn).slice(0, 4).map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
       </div>
     </section>
+  );
+}
+
+function SliderControls({dir, count, active, onPrev, onNext, onDot, disablePrev, disableNext}: {
+  dir: "rtl" | "ltr";
+  count: number;
+  active: number;
+  onPrev: () => void;
+  onNext: () => void;
+  onDot?: (i: number) => void;
+  disablePrev?: boolean;
+  disableNext?: boolean;
+}) {
+  return (
+    <div className="slider-nav">
+      <button type="button" className="slider-btn" onClick={onPrev} aria-label="prev" disabled={disablePrev}>
+        <svg viewBox="0 0 24 24" className={dir === "rtl" ? "" : "is-flip"} aria-hidden>
+          <path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {onDot ? (
+        <div className="slider-dots">
+          {Array.from({ length: count }, (_, i) => (
+            <button key={i} type="button" className={`slider-dot${i === active ? " is-on" : ""}`} onClick={() => onDot(i)} aria-label={`slide ${i + 1}`} />
+          ))}
+        </div>
+      ) : null}
+      <button type="button" className="slider-btn" onClick={onNext} aria-label="next" disabled={disableNext}>
+        <svg viewBox="0 0 24 24" className={dir === "rtl" ? "is-flip" : ""} aria-hidden>
+          <path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </div>
   );
 }

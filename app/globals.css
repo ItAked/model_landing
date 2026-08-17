@@ -189,8 +189,9 @@ ul { margin: 0; padding: 0; list-style: none; }
   display: grid;
   grid-template-columns: 0.35fr 0.65fr;
   gap: 3rem;
-  min-height: 72vh;
+  min-height: 22rem;
   align-items: center;
+  margin-top: 2rem;
 }
 .steps-num {
   font-size: clamp(6rem, 16vw, 12rem);
@@ -201,12 +202,53 @@ ul { margin: 0; padding: 0; list-style: none; }
 .steps-copy h3 { font-size: clamp(1.8rem, 3vw, 2.6rem); margin: 0.8rem 0 1rem; }
 .step-panel { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
 .step-panel.is-on { position: relative; opacity: 1; pointer-events: auto; }
-.steps-stage { position: relative; min-height: 14rem; }
+.steps-stage { position: relative; min-height: 12rem; }
+
+/* SLIDER */
+.slider-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.8rem;
+}
+.slider-btn {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  background: var(--white);
+  transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
+}
+.slider-btn svg { width: 1.15rem; height: 1.15rem; }
+.slider-btn .is-flip { transform: scaleX(-1); }
+.slider-btn:hover { background: var(--accent); color: var(--white); transform: translateY(-1px); }
+.slider-btn:disabled { opacity: 0.35; pointer-events: none; transform: none; }
+.slider-dots { display: flex; gap: 0.4rem; }
+.slider-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.45;
+  transition: width 0.3s ease, opacity 0.3s ease, background 0.3s ease;
+}
+.slider-dot.is-on { background: var(--accent); opacity: 1; width: 1.35rem; border-radius: 999px; }
 
 /* RAIL */
 .rail { padding: 4rem 0 6rem; overflow: hidden; }
-.rail-head { margin-bottom: 2.5rem; }
-.rail-track { display: flex; gap: 1.25rem; width: max-content; padding-inline-end: 20vw; }
+.rail-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+.rail-head .slider-nav { margin-top: 0; flex: none; }
+.rail-viewport { overflow: hidden; }
+.rail-track { display: flex; gap: 1.25rem; width: max-content; padding-inline: max(1.5rem, calc((100vw - 1180px) / 2)); }
 .rail-card {
   width: min(78vw, 28rem);
   flex: none;
@@ -446,21 +488,9 @@ th { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; opac
   .hero, .steps-pin, .method-grid, .dur-grid, .tier-grid, .card-grid, .together-grid, .builder, .referral, .mv, .why-grid, .journey-grid, .journey-card {
     grid-template-columns: 1fr;
   }
-  .step-panel {
-    position: relative !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    transform: none !important;
-    pointer-events: auto;
-    margin-bottom: 2rem;
-  }
-  .steps-num { display: none; }
-  .rail-track {
-    overflow-x: auto;
-    width: auto;
-    padding-inline: 1rem 20vw;
-    scrollbar-width: none;
-  }
+  .step-panel { margin-bottom: 0; }
+  .rail-head { flex-direction: column; align-items: flex-start; }
+  .rail-track { padding-inline: 1rem; }
   .hero-visual { min-height: 52vh; }
   .hero-copy { padding: 7rem 0 2rem; }
   .rail-card { height: 26rem; width: min(86vw, 22rem); }
